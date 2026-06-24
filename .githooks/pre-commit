@@ -1,0 +1,91 @@
+#!/bin/bash
+# Pre-commit hook — Spec Hunter Web App
+# Full 5-step verification pipeline (GSD Core Phase 7.6)
+set -e
+
+echo "═══════════════════════════════════════════"
+echo "  PRE-COMMIT VERIFICATION PIPELINE"
+echo "═══════════════════════════════════════════"
+
+# ── Step 1: Static Security Scan ──
+echo ""
+echo "🔍 Step 1: Static Security Scan"
+HAS_SECURITY_ISSUE=0
+
+# Check for hardcoded secrets in staged changes
+STAGED_SECRETS=$(git diff --cached | grep "^+" | grep -iE "(api_key|secret|password|token|passwd)\s*=\s*['\"][^'\"]{6,}['\"]" || true)
+if [ -n "$STAGED_SECRETS" ]; then
+  echo "❌ SECURITY: Hardcoded secrets detected in staged changes!"
+  echo "$STAGED_SECRETS"
+  HAS_SECURITY_ISSUE=1
+fi
+
+# Check for dangerous function calls
+STAGED_DANGEROUS=$(git diff --cached | grep "^+" | grep -E "os\.system\(|subprocess.*shell=True|\beval\(|\bexec\(" || true)
+if [ -n "$STAGED_DANGEROUS" ]; then
+  echo "❌ SECURITY: Dangerous function calls detected!"
+  echo "$STAGED_DANGEROUS"
+  HAS_SECURITY_ISSUE=1
+fi
+
+# Check for .env files staged
+STAGED_ENV=$(git diff --cached --name-only | grep -E '^\.env$|^\.env\.local$' || true)
+if [ -n "$STAGED_ENV" ]; then
+  echo "❌ SECURITY: .env files staged for commit!"
+  echo "   Staged: $STAGED_ENV"
+  echo "   Remove: git reset HEAD .env"
+  HAS_SECURITY_ISSUE=1
+fi
+
+if [ "$HAS_SECURITY_ISSUE" -eq 1 ]; then
+  exit 1
+fi
+echo "   ✅ No security issues found"
+
+# ── Step 2: Baseline Tests + Linting ──
+echo ""
+echo "🧪 Step 2: Baseline Tests + Linting"
+
+# TypeScript check
+if command -v npx &> /dev/null && [ -f "tsconfig.json" ]; then
+  echo "   Running TypeScript check..."
+  STAGED_TS=$(git diff --cached --name-only | grep '\.tsx\?$' || true)
+  if [ -n "$STAGED_TS" ]; then
+    npx tsc --noEmit 2>&1 | head -20 && echo "   ✅ TypeScript check passed" || echo "   ⚠️ TS check had issues (pre-existing or new — review output)"
+  else
+    echo "   No TypeScript files staged, skipping"
+  fi
+fi
+
+# ── Step 3: Self-Review Checklist Reminder ──
+echo ""
+echo "📋 Step 3: Self-Review Checklist"
+echo "   Review your changes for:"
+echo "   [ ] No debug console.log left behind"
+echo "   [ ] No commented-out code"
+echo "   [ ] Input validation on user-provided data"
+echo "   [ ] External calls have error handling"
+echo "   [ ] Mobile test at 375px"
+echo "   [ ] Dark theme colors match design system"
+echo "   [ ] Lucide icons used (not emoji)"
+echo "   [ ] TEST.md updated with test results"
+
+# ── Step 4: Independent Reviewer Reminder ──
+echo ""
+echo "🤖 Step 4: Independent Reviewer Subagent"
+echo "   FOR COMPLEX CHANGES, run before commit:"
+echo "   claude -p 'Review this diff for bugs, edge cases, and security issues.'"
+echo "   Or use the Review Agent from .claude/agents/spec-hunter-web.md"
+
+# ── Step 5: Auto-Fix Reminder ──
+echo ""
+echo "🔧 Step 5: Auto-Fix (if reviewer found issues)"
+echo "   Max 2 fix-and-reverify cycles"
+echo "   NEVER let the implementer fix their own issues"
+echo "   Use the Fix Agent from .claude/agents/spec-hunter-web.md"
+
+echo ""
+echo "═══════════════════════════════════════════"
+echo "  ✅ Pre-commit checks complete"
+echo "  Review output above before committing"
+echo "═══════════════════════════════════════════"

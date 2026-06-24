@@ -1,0 +1,14 @@
+{
+  "project_name": "Spec Hunter",
+  "version": "1.0.0",
+  "workflow": "gsd-core",
+  "runtime": "claude-code",
+  "phase_loop": ["discuss", "plan", "execute", "verify", "ship"],
+  "max_fix_cycles": 2,
+  "design_system": "ui-ux-pro-max",
+  "design_system_path": "design-system/spec-hunter/MASTER.md",
+  "planning_dir": ".planning",
+  "default_model_cheap": "gpt-4o-mini",
+  "default_model_capable": "claude-sonnet-4",
+  "created_at": "2026-06-24"
+}
