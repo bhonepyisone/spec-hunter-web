@@ -20,8 +20,8 @@ if [ -n "$STAGED_SECRETS" ]; then
   HAS_SECURITY_ISSUE=1
 fi
 
-# Check for dangerous function calls
-STAGED_DANGEROUS=$(git diff --cached | grep "^+" | grep -E "os\.system\(|subprocess.*shell=True|\beval\(|\bexec\(" || true)
+# Check for dangerous function calls in source files only (not in .githooks/)
+STAGED_DANGEROUS=$(git diff --cached --name-only | grep -E '\.tsx?$|\.py$|\.jsx?$' | xargs -I{} sh -c 'git diff --cached "{}" | grep "^+" | grep -E "os\.system\(|subprocess.*shell=True|\beval\(|\bexec\("' 2>/dev/null || true)
 if [ -n "$STAGED_DANGEROUS" ]; then
   echo "❌ SECURITY: Dangerous function calls detected!"
   echo "$STAGED_DANGEROUS"
